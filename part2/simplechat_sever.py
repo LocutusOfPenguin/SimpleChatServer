@@ -15,7 +15,7 @@ from tornado.log import app_log
 from tornado.util import bytes_type
 from tornado.iostream import StreamClosedError
 import tornado.options
-
+import tornado.escape
 
 MAX_ROOMS = 100
 MAX_USERS_PER_ROOM = 100

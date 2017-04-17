@@ -86,10 +86,10 @@
             }
 
             function send_text_msg(txt) {
-                var text_msg_obj = {"msgtype": "text", "payload": txt };
+                var text_msg_obj = { "msgtype": "text", "payload": txt };
                 $("#txtMsg").val("");
                 $("#txtMsg").focus();
-                var jmsg = JSON.stringify(text_msg_obj );
+                var jmsg = JSON.stringify(text_msg_obj);
                 ws.send(jmsg);
             }
 
@@ -106,8 +106,8 @@
                     case "nick_list":
                         $("#nickList").empty();
                         $("#nickList").append("<ul>");
-                        nl = _.map(msg_obj.payload, function(nick){ return "<li>"+nick+"</li>"; });
-                        ih =  _.reduce(nl, function(inner, li){ return inner + '\n'+ li; }, "");
+                        nl = _.map(msg_obj.payload, function(nick) { return "<li>"+nick+"</li>"; });
+                        ih =  _.reduce(nl, function(inner, li) { return inner + '\n'+ li; }, "");
                         $("#nickList").append(ih);
                         $("#nickList").append("</ul>");
                         break;
@@ -117,7 +117,7 @@
 
                 var msgs = $("#msgList ul li");
                 var xm = msgs.length - MAX_MSGS;
-                if ( xm > 0 ) {
+                if (xm > 0) {
                     msgs.slice(0,xm).remove()
                 }
                 $("#msgList").scrollTop($("#msgList")[0].scrollHeight);
@@ -126,7 +126,7 @@
             function getCookie(name){
                 var pattern = RegExp(name + "=.[^;]*");
                 var matched = document.cookie.match(pattern);
-                if(matched){
+                if (matched) {
                     var cookie = matched[0].split('=');
                     return cookie[1]
                 }

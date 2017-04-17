@@ -44,7 +44,7 @@
 
             function init_chat_ui() {
                 $("#txtMsg").keyup(function(event) {
-                        if ( $(this).val() != "") {
+                        if ($(this).val() != "") {
                             $("#btnSend").removeAttr("disabled");
                             //if key is enter, send message and clean box
                             if (event.which == 13) {
@@ -71,21 +71,25 @@
             }
 
             function receive_message(wsevent) {
-                console.log("received message: "+wsevent.data )
-                msg_obj = $.parseJSON(wsevent.data);
+                console.log("received message: "+wsevent.data );
+                var msg_obj = $.parseJSON(wsevent.data);
                 switch (msg_obj.msgtype) {
-                    case "join": $("#msgList").append("<b>"+ msg_obj.username + msg_obj.payload + "</b><br/>");
-                                 break;
-                    case "leave":$("#msgList").append("<b>"+msg_obj.username + msg_obj.payload + "</b><br/>");
-                                  break;
-                    case "nick_list": $("#nickList").empty()
-                                      $("#nickList").append("<ul>");
-                                      nl = _.map(msg_obj.payload, function(nick){ return "<li>"+nick+"</li>"; });
-                                      ih =  _.reduce(nl, function(inner, li){ return inner + '\n'+ li; }, "");
-                                      $("#nickList").append(ih);
-                                      $("#nickList").append("</ul>");
-                                  break;
-                    default: $("#msgList").append("<b>"+msg_obj.username+": </b>"+msg_obj.payload+"<br/>");
+                    case "join":
+                        $("#msgList").append("<b>"+ msg_obj.username + msg_obj.payload + "</b><br/>");
+                        break;
+                    case "leave":
+                        $("#msgList").append("<b>"+msg_obj.username + msg_obj.payload + "</b><br/>");
+                        break;
+                    case "nick_list":
+                        $("#nickList").empty()
+                        $("#nickList").append("<ul>");
+                        nl = _.map(msg_obj.payload, function(nick){ return "<li>"+nick+"</li>"; });
+                        ih =  _.reduce(nl, function(inner, li){ return inner + '\n'+ li; }, "");
+                        $("#nickList").append(ih);
+                        $("#nickList").append("</ul>");
+                        break;
+                    default
+                        $("#msgList").append("<b>"+msg_obj.username+": </b>"+msg_obj.payload+"<br/>");
                 }
 
                 $("#msgList").scrollTop($("#msgList")[0].scrollHeight);

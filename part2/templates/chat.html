@@ -52,7 +52,7 @@
                     deleteCookie("ftc_cid")
                 };
 
-                ws.onclose = function(){
+                ws.onclose = function() {
                     console.log("WebSocket closed.");
                 };
 
@@ -66,19 +66,19 @@
 
             function init_chat_ui() {
                 $("#txtMsg").keyup(function(event) {
-                        if ( $(this).val() != "") {
-                            $("#btnSend").removeAttr("disabled");
-                            //if key is enter, send message and clean box
-                            if (event.which == 13) {
-                                send_text_msg($("#txtMsg").val());
-                                $("#btnSend").attr("disabled", "disabled");
-                            }
-                        } else {
+                    if ($(this).val() != "") {
+                        $("#btnSend").removeAttr("disabled");
+                        //if key is enter, send message and clean box
+                        if (event.which == 13) {
+                            send_text_msg($("#txtMsg").val());
                             $("#btnSend").attr("disabled", "disabled");
                         }
+                    } else {
+                        $("#btnSend").attr("disabled", "disabled");
+                    }
                 });
                 $("#btnSend").click(function() {
-                    send_text_msg($("#txtMsg").val())
+                    send_text_msg($("#txtMsg").val());
                     $("#btnSend").attr("disabled", "disabled");
                 });
                 $("body").removeClass("hidden");
@@ -86,34 +86,37 @@
             }
 
             function send_text_msg(txt) {
-                text_msg_obj = {"msgtype": "text", "payload": txt };
+                var text_msg_obj = {"msgtype": "text", "payload": txt };
                 $("#txtMsg").val("");
                 $("#txtMsg").focus();
-                jmsg = JSON.stringify(text_msg_obj );
+                var jmsg = JSON.stringify(text_msg_obj );
                 ws.send(jmsg);
             }
 
             function receive_message(wsevent) {
                 console.log("received message: "+wsevent.data );
-                msg_obj = $.parseJSON(wsevent.data);
+                var msg_obj = $.parseJSON(wsevent.data);
                 switch (msg_obj.msgtype) {
-                    case "join": $("#msgList ul").append("<li><b>"+ msg_obj.username + msg_obj.payload + "</b></li>");
-                                 break;
-                    case "leave":$("#msgList ul").append("<li><b>"+msg_obj.username + msg_obj.payload + "</b></li>");
-                                  break;
-                    case "nick_list": $("#nickList").empty()
-                                      $("#nickList").append("<ul>");
-                                      nl = _.map(msg_obj.payload, function(nick){ return "<li>"+nick+"</li>"; })
-                                      ih =  _.reduce(nl, function(inner, li){ return inner + '\n'+ li; }, "");
-                                      $("#nickList").append(ih);
-                                      $("#nickList").append("</ul>");
-                                  break;
+                    case "join":
+                        $("#msgList ul").append("<li><b>"+ msg_obj.username + msg_obj.payload + "</b></li>");
+                        break;
+                    case "leave":
+                        $("#msgList ul").append("<li><b>"+msg_obj.username + msg_obj.payload + "</b></li>");
+                        break;
+                    case "nick_list":
+                        $("#nickList").empty();
+                        $("#nickList").append("<ul>");
+                        nl = _.map(msg_obj.payload, function(nick){ return "<li>"+nick+"</li>"; });
+                        ih =  _.reduce(nl, function(inner, li){ return inner + '\n'+ li; }, "");
+                        $("#nickList").append(ih);
+                        $("#nickList").append("</ul>");
+                        break;
                     default: //text message. If more than 100 lines in #msgList, leave just the last 100
-                             $("#msgList ul").append("<li><b>"+msg_obj.username+": </b>"+msg_obj.payload+"</li>");
+                        $("#msgList ul").append("<li><b>"+msg_obj.username+": </b>"+msg_obj.payload+"</li>");
                 }
 
-                msgs = $("#msgList ul li");
-                xm = msgs.length - MAX_MSGS;
+                var msgs = $("#msgList ul li");
+                var xm = msgs.length - MAX_MSGS;
                 if ( xm > 0 ) {
                     msgs.slice(0,xm).remove()
                 }
@@ -122,7 +125,7 @@
 
             function getCookie(name){
                 var pattern = RegExp(name + "=.[^;]*");
-                matched = document.cookie.match(pattern);
+                var matched = document.cookie.match(pattern);
                 if(matched){
                     var cookie = matched[0].split('=');
                     return cookie[1]
@@ -131,10 +134,10 @@
             }
             function deleteCookie( name, path, domain ) {
                 if ( getCookie( name ) ) document.cookie = name + "=" +
-                ( ( path ) ? ";path=" + path : "") +
-                ( ( domain ) ? ";domain=" + domain : "" ) +
-                ";expires=Thu, 01-Jan-1970 00:00:01 GMT";
-                }
+                    ( ( path ) ? ";path=" + path : "") +
+                    ( ( domain ) ? ";domain=" + domain : "" ) +
+                    ";expires=Thu, 01-Jan-1970 00:00:01 GMT";
+            }
     </script>
 </body>
 </html>

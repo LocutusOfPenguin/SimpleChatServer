@@ -12,6 +12,8 @@ import logging
 from tornado.log import enable_pretty_logging
 from tornado.log import app_log
 # from tornado.options import define, options
+from tornado.escape import json_encode
+
 from tornado.util import bytes_type
 from tornado.iostream import StreamClosedError
 import tornado.options
@@ -145,7 +147,7 @@ class RoomHandler(object):
         """Send a message of type 'join' to all users connected to the room where client_id is connected."""
         nick = self.client_info[client_id]['nick']
         r_cwsconns = self.roomate_cwsconns(client_id)
-        msg = {"msgtype": "join", "username": nick, "payload": " joined the chat room."}
+        msg = {"msgtype": "join", "username": nick, "payload": " joined room"}
         pmessage = json.dumps(msg)
         for conn in r_cwsconns:
             conn.write_message(pmessage)
@@ -161,7 +163,7 @@ class RoomHandler(object):
     @staticmethod
     def send_leave_msg(nick, rconns):
         """Send a message of type 'leave', specifying the nickname that is leaving, to all the specified connections."""
-        msg = {"msgtype": "leave", "username": nick, "payload": " left the chat room."}
+        msg = {"msgtype": "leave", "username": nick, "payload": " left room"}
         pmessage = json.dumps(msg)
         for conn in rconns:
             conn.write_message(pmessage)
@@ -179,27 +181,70 @@ class MainHandler(tornado.web.RequestHandler):
             try:
                 room = self.get_argument("room")
                 nick = self.get_argument("nick")
-                cid = self.__rh.add_roomnick(room, nick)  # this alreay calls add_pending
-                self.set_cookie("ftc_cid", cid)
+                cid = self.__rh.add_roomnick(room, nick)  # this already calls add_pending
+                self.set_cookie("picochess_remote", cid)
                 emsgs = ["The nickname provided was invalid. It can only contain letters, numbers, - and _.\nPlease try again.",
                          "The room name provided was invalid. It can only contain letters, numbers, - and _.\nPlease try again.",
                          "The maximum number of users in this room (%d) has been reached.\n\nPlease try again later."  % MAX_USERS_PER_ROOM,
                          "The maximum number of rooms (%d) has been reached.\n\nPlease try again later." % MAX_ROOMS]
                 if cid == -1 or cid == -2:
-                    self.render("templates/maxreached.html", emsg=emsgs[cid])
+                    obj = {
+                        'result': 'MaxReached',
+                        'emsg': emsgs[cid]
+                    }
+                    callback = self.get_argument('callback')
+                    jsonp = "{jsfunc}({json});".format(jsfunc=callback,
+                                                       json=json_encode(obj))
+                    self.set_header('Content-Type', 'application/javascript')
+                    self.write(jsonp)
+                    # self.render("templates/maxreached.html", emsg=emsgs[cid])
                 else:
                     if cid < -2:
-                        self.render("templates/main.html", emsg=emsgs[cid])
+                        obj = {
+                            'result': 'invalid name',
+                            'emsg': emsgs[cid]
+                        }
+                        callback = self.get_argument('callback')
+                        jsonp = "{jsfunc}({json});".format(jsfunc=callback,
+                                                           json=json_encode(obj))
+                        self.set_header('Content-Type', 'application/javascript')
+                        self.write(jsonp)
+                        # self.render("templates/main.html", emsg=emsgs[cid])
                     else:
-                        self.render("templates/chat.html", room_name=room)
+                        obj = {
+                            'result': 'OK',
+                            'room_name': room
+                        }
+                        callback = self.get_argument('callback')
+                        jsonp = "{jsfunc}({json});".format(jsfunc=callback,
+                                                           json=json_encode(obj))
+                        self.set_header('Content-Type', 'application/javascript')
+                        self.write(jsonp)
+                        # self.render("templates/chat.html", room_name=room)
             except tornado.web.MissingArgumentError:
-                self.render("templates/main.html", emsg="")
+                obj = {
+                    'result': 'MissingError',
+                }
+                callback = self.get_argument('callback')
+                jsonp = "{jsfunc}({json});".format(jsfunc=callback,
+                                                   json=json_encode(obj))
+                self.set_header('Content-Type', 'application/javascript')
+                self.write(jsonp)
+                # self.render("templates/main.html", emsg="")
         else:
             if action == "drop":  # drop client from "pending" list. Client cannot establish WS connection.
-                client_id = self.get_cookie("ftc_cid")
+                client_id = self.get_cookie("picochess_remote")
                 if client_id:
                     self.__rh.remove_pending(client_id)
-                    self.render("templates/nows.html")
+                    obj = {
+                        'result': 'dropped'
+                    }
+                    callback = self.get_argument('callback')
+                    jsonp = "{jsfunc}({json});".format(jsfunc=callback,
+                                                       json=json_encode(obj))
+                    self.set_header('Content-Type', 'application/javascript')
+                    self.write(jsonp)
+                    # self.render("templates/nows.html")
 
 
 class ClientWSConnection(websocket.WebSocketHandler):
@@ -208,8 +253,11 @@ class ClientWSConnection(websocket.WebSocketHandler):
         """Store a reference to the "external" RoomHandler instance"""
         self.__rh = room_handler
 
+    def check_origin(self, origin):
+        return True
+
     def open(self):
-        self.__clientID = self.get_cookie("ftc_cid")
+        self.__clientID = self.get_cookie("picochess_remote")
         self.__rh.add_client_wsconn(self.__clientID, self)
         app_log.info("| WS_OPENED | %s" % self.__clientID)
 
@@ -273,7 +321,8 @@ if __name__ == "__main__":
         ],
         static_path=os.path.join(os.path.dirname(__file__), "static")
     )
-    app.listen(tornado.options.options.port,tornado.options.options.ip)
-    app_log.info('Simple Chat Server started.')
-    app_log.info('listening on %s:%s...' % (tornado.options.options.ip, tornado.options.options.port))
+    options = tornado.options.options
+    app.listen(options.port, options.ip)
+    app_log.info('picochess remote chess server started.')
+    app_log.info('listening on %s:%s...' % (options.ip, options.port))
     tornado.ioloop.IOLoop.instance().start()

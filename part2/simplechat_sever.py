@@ -310,7 +310,7 @@ class ClientWSConnection(websocket.WebSocketHandler):
 
 if __name__ == "__main__":
 
-    tornado.options.define("port", default="8888", help="Port to listen on.")
+    tornado.options.define("port", default="5432", help="Port to listen on.")
     tornado.options.define("ip", default="", help="IP Address to listen on.")
     tornado.options.parse_command_line()
 

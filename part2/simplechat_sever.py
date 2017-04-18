@@ -182,11 +182,10 @@ class MainHandler(tornado.web.RequestHandler):
                 room = self.get_argument("room")
                 nick = self.get_argument("nick")
                 cid = self.__rh.add_roomnick(room, nick)  # this already calls add_pending
-                self.set_cookie("picochess_remote", cid)
-                emsgs = ["The nickname provided was invalid. It can only contain letters, numbers, - and _.\nPlease try again.",
-                         "The room name provided was invalid. It can only contain letters, numbers, - and _.\nPlease try again.",
-                         "The maximum number of users in this room (%d) has been reached.\n\nPlease try again later."  % MAX_USERS_PER_ROOM,
-                         "The maximum number of rooms (%d) has been reached.\n\nPlease try again later." % MAX_ROOMS]
+                emsgs = ["The nickname provided was invalid. It can only contain letters, numbers, - and _.Please try again.",
+                         "The room name provided was invalid. It can only contain letters, numbers, - and _.Please try again.",
+                         "The maximum number of users in this room (%d) has been reached. Please try again later."  % MAX_USERS_PER_ROOM,
+                         "The maximum number of rooms (%d) has been reached. Please try again later." % MAX_ROOMS]
                 if cid == -1 or cid == -2:
                     obj = {
                         'result': 'MaxReached',
@@ -211,6 +210,7 @@ class MainHandler(tornado.web.RequestHandler):
                         self.write(jsonp)
                         # self.render("templates/main.html", emsg=emsgs[cid])
                     else:
+                        self.set_cookie("picochess_remote", cid)
                         obj = {
                             'result': 'OK',
                             'room_name': room
@@ -258,8 +258,9 @@ class ClientWSConnection(websocket.WebSocketHandler):
 
     def open(self):
         self.__clientID = self.get_cookie("picochess_remote")
-        self.__rh.add_client_wsconn(self.__clientID, self)
-        app_log.info("| WS_OPENED | %s" % self.__clientID)
+        if self.__clientID:
+            self.__rh.add_client_wsconn(self.__clientID, self)
+            app_log.info("| WS_OPENED | %s" % self.__clientID)
 
     def on_message(self, message):
         msg = json.loads(message)
@@ -300,8 +301,9 @@ class ClientWSConnection(websocket.WebSocketHandler):
 
     def on_close(self):
         cid = self.__clientID
-        self.__rh.remove_client(self.__clientID)
-        app_log.info("| WS_CLOSED | %s" % cid)
+        if cid:
+            self.__rh.remove_client(cid)
+            app_log.info("| WS_CLOSED | %s" % cid)
 
     def allow_draft76(self):
         return True

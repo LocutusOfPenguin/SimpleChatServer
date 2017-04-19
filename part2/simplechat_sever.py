@@ -177,6 +177,7 @@ class MainHandler(tornado.web.RequestHandler):
 
     def get(self, action=None):
         """Render chat.html if required arguments are present, render main.html otherwise."""
+        callback = self.get_argument('callback')
         if not action:  # init startup sequence, won't be completed until the websocket connection is established.
             try:
                 room = self.get_argument("room")
@@ -191,21 +192,17 @@ class MainHandler(tornado.web.RequestHandler):
                         'result': 'MaxReached',
                         'emsg': emsgs[cid]
                     }
-                    callback = self.get_argument('callback')
-                    jsonp = "{jsfunc}({json});".format(jsfunc=callback,
-                                                       json=json_encode(obj))
+                    jsonp = "{jsfunc}({json});".format(jsfunc=callback, json=json_encode(obj))
                     self.set_header('Content-Type', 'application/javascript')
                     self.write(jsonp)
                     # self.render("templates/maxreached.html", emsg=emsgs[cid])
                 else:
                     if cid < -2:
                         obj = {
-                            'result': 'invalid name',
+                            'result': 'InvalidName',
                             'emsg': emsgs[cid]
                         }
-                        callback = self.get_argument('callback')
-                        jsonp = "{jsfunc}({json});".format(jsfunc=callback,
-                                                           json=json_encode(obj))
+                        jsonp = "{jsfunc}({json});".format(jsfunc=callback, json=json_encode(obj))
                         self.set_header('Content-Type', 'application/javascript')
                         self.write(jsonp)
                         # self.render("templates/main.html", emsg=emsgs[cid])
@@ -215,19 +212,15 @@ class MainHandler(tornado.web.RequestHandler):
                             'result': 'OK',
                             'room_name': room
                         }
-                        callback = self.get_argument('callback')
-                        jsonp = "{jsfunc}({json});".format(jsfunc=callback,
-                                                           json=json_encode(obj))
+                        jsonp = "{jsfunc}({json});".format(jsfunc=callback, json=json_encode(obj))
                         self.set_header('Content-Type', 'application/javascript')
                         self.write(jsonp)
                         # self.render("templates/chat.html", room_name=room)
             except tornado.web.MissingArgumentError:
                 obj = {
-                    'result': 'MissingError',
+                    'result': 'MissingArgument',
                 }
-                callback = self.get_argument('callback')
-                jsonp = "{jsfunc}({json});".format(jsfunc=callback,
-                                                   json=json_encode(obj))
+                jsonp = "{jsfunc}({json});".format(jsfunc=callback, json=json_encode(obj))
                 self.set_header('Content-Type', 'application/javascript')
                 self.write(jsonp)
                 # self.render("templates/main.html", emsg="")
@@ -237,11 +230,9 @@ class MainHandler(tornado.web.RequestHandler):
                 if client_id:
                     self.__rh.remove_pending(client_id)
                     obj = {
-                        'result': 'dropped'
+                        'result': 'DropPending'
                     }
-                    callback = self.get_argument('callback')
-                    jsonp = "{jsfunc}({json});".format(jsfunc=callback,
-                                                       json=json_encode(obj))
+                    jsonp = "{jsfunc}({json});".format(jsfunc=callback, json=json_encode(obj))
                     self.set_header('Content-Type', 'application/javascript')
                     self.write(jsonp)
                     # self.render("templates/nows.html")

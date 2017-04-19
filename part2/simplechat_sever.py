@@ -11,7 +11,6 @@ from tornado import websocket
 import logging
 from tornado.log import enable_pretty_logging
 from tornado.log import app_log
-# from tornado.options import define, options
 from tornado.escape import json_encode
 
 from tornado.util import bytes_type
@@ -67,11 +66,11 @@ class RoomHandler(object):
         return cid
 
     def add_pending(self,cid,room,nick):
-        app_log.info("| ADD_PENDING | %s" % cid)
+        app_log.info("| ADD_PENDING | cid: %s" % cid)
         self.pending_cwsconn[cid] = {'room': room, 'nick': nick}  # still don't know the WS connection for this client
 
     def remove_pending(self,client_id):
-        app_log.info("| REMOVE_PENDING | %s" % client_id)
+        app_log.info("| REMOVE_PENDING | cid: %s" % client_id)
         if client_id in self.pending_cwsconn:
             del(self.pending_cwsconn[client_id])  # no longer pending
 
@@ -125,7 +124,7 @@ class RoomHandler(object):
         self.send_nicks_msg(r_cwsconns, nick_list)
         if len(self.room_info[cid_room]) == 0:  # if room is empty, remove.
             del(self.room_info[cid_room])
-            app_log.info("| ROOM_REMOVED | %s" % cid_room)
+            app_log.info("| ROOM_REMOVED | cid: %s" % cid_room)
 
     def nicks_in_room(self, rn):
         """Return a list with the nicknames of the users currently connected to the specified room."""
@@ -147,7 +146,7 @@ class RoomHandler(object):
         """Send a message of type 'join' to all users connected to the room where client_id is connected."""
         nick = self.client_info[client_id]['nick']
         r_cwsconns = self.roomate_cwsconns(client_id)
-        msg = {"msgtype": "join", "username": nick, "payload": " joined room"}
+        msg = {"event": "join", "username": nick, "payload": " joined room"}
         pmessage = json.dumps(msg)
         for conn in r_cwsconns:
             conn.write_message(pmessage)
@@ -155,7 +154,7 @@ class RoomHandler(object):
     @staticmethod
     def send_nicks_msg(conns, nick_list):
         """Send a message of type 'nick_list' (contains a list of nicknames) to all the specified connections."""
-        msg = {"msgtype": "nick_list", "payload": nick_list}
+        msg = {"event": "nick_list", "payload": nick_list}
         pmessage = json.dumps(msg)
         for c in conns:
             c.write_message(pmessage)
@@ -163,7 +162,7 @@ class RoomHandler(object):
     @staticmethod
     def send_leave_msg(nick, rconns):
         """Send a message of type 'leave', specifying the nickname that is leaving, to all the specified connections."""
-        msg = {"msgtype": "leave", "username": nick, "payload": " left room"}
+        msg = {"event": "leave", "username": nick, "payload": " left room"}
         pmessage = json.dumps(msg)
         for conn in rconns:
             conn.write_message(pmessage)
@@ -251,15 +250,15 @@ class ClientWSConnection(websocket.WebSocketHandler):
         self.__clientID = self.get_cookie("picochess_remote")
         if self.__clientID:
             self.__rh.add_client_wsconn(self.__clientID, self)
-            app_log.info("| WS_OPENED | %s" % self.__clientID)
+            app_log.info("| WS_OPENED | cid: %s" % self.__clientID)
 
     def on_message(self, message):
         msg = json.loads(message)
-        mlen = len(msg['payload'])
+        mlen = len(msg['payload']) if hasattr(msg, 'payload') else 0
         msg['username'] = self.__rh.client_info[self.__clientID]['nick']
         pmessage = json.dumps(msg)
         rconns = self.__rh.roomate_cwsconns(self.__clientID)
-        app_log.info("| MSG_RECEIVED | %s | %d" % (self.__clientID, mlen))
+        app_log.info("| MSG_RECEIVED | cid: %s | len: %d" % (self.__clientID, mlen))
         frame = self.make_frame(pmessage)
         for conn in rconns:
             # conn.write_message(pmessage)
@@ -294,7 +293,7 @@ class ClientWSConnection(websocket.WebSocketHandler):
         cid = self.__clientID
         if cid:
             self.__rh.remove_client(cid)
-            app_log.info("| WS_CLOSED | %s" % cid)
+            app_log.info("| WS_CLOSED | cid: %s" % cid)
 
     def allow_draft76(self):
         return True

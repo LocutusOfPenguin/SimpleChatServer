@@ -196,7 +196,7 @@ class MainHandler(tornado.web.RequestHandler):
                     self.write(jsonp)
                     # self.render("templates/maxreached.html", emsg=emsgs[cid])
                 else:
-                    if cid < -2:
+                    if cid == -3 or cid == -4:
                         obj = {
                             'result': 'InvalidName',
                             'emsg': emsgs[cid]

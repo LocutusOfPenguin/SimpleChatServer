@@ -206,10 +206,11 @@ class MainHandler(tornado.web.RequestHandler):
                         self.write(jsonp)
                         # self.render("templates/main.html", emsg=emsgs[cid])
                     else:
-                        self.set_cookie("picochess_remote", cid)
+                        # self.set_cookie("picochess_remote", cid)
                         obj = {
                             'result': 'OK',
-                            'room_name': room
+                            'room_name': room,
+                            'client_id': cid
                         }
                         jsonp = "{jsfunc}({json});".format(jsfunc=callback, json=json_encode(obj))
                         self.set_header('Content-Type', 'application/javascript')
@@ -246,11 +247,15 @@ class ClientWSConnection(websocket.WebSocketHandler):
     def check_origin(self, origin):
         return True
 
-    def open(self):
-        self.__clientID = self.get_cookie("picochess_remote")
+    # def open(self):
+    #    self.__clientID = self.get_cookie("picochess_remote")
+    def open(self, client_id):
+        self.__clientID = client_id
         if self.__clientID:
             self.__rh.add_client_wsconn(self.__clientID, self)
             app_log.info("| WS_OPENED | cid: %s" % self.__clientID)
+        else:
+            app_log.info("cookie cant be read")
 
     def on_message(self, message):
         msg = json.loads(message)
@@ -309,7 +314,7 @@ if __name__ == "__main__":
     app_log.level = logging.INFO
     app = tornado.web.Application([
         (r"/(|drop)", MainHandler, {'room_handler': rh}),
-        (r"/ws", ClientWSConnection, {'room_handler': rh})
+        (r"/ws/(.*)", ClientWSConnection, {'room_handler': rh})
         ],
         static_path=os.path.join(os.path.dirname(__file__), "static")
     )

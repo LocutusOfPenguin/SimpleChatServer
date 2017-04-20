@@ -124,7 +124,7 @@ class RoomHandler(object):
         self.send_nicks_msg(r_cwsconns, nick_list)
         if len(self.room_info[cid_room]) == 0:  # if room is empty, remove.
             del(self.room_info[cid_room])
-            app_log.info("| ROOM_REMOVED | cid: %s" % cid_room)
+            app_log.info("| ROOM_REMOVED | room: %s" % cid_room)
 
     def nicks_in_room(self, rn):
         """Return a list with the nicknames of the users currently connected to the specified room."""
@@ -146,7 +146,7 @@ class RoomHandler(object):
         """Send a message of type 'join' to all users connected to the room where client_id is connected."""
         nick = self.client_info[client_id]['nick']
         r_cwsconns = self.roomate_cwsconns(client_id)
-        msg = {"event": "join", "username": nick, "payload": " joined room"}
+        msg = {"event": "join", "username": nick, "payload": " joined room " + self.client_info[client_id]['room']}
         pmessage = json.dumps(msg)
         for conn in r_cwsconns:
             conn.write_message(pmessage)

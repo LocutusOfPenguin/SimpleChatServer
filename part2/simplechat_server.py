@@ -206,7 +206,6 @@ class MainHandler(tornado.web.RequestHandler):
                         self.write(jsonp)
                         # self.render("templates/main.html", emsg=emsgs[cid])
                     else:
-                        # self.set_cookie("picochess_remote", cid)
                         obj = {
                             'result': 'OK',
                             'room_name': room,
@@ -247,8 +246,6 @@ class ClientWSConnection(websocket.WebSocketHandler):
     def check_origin(self, origin):
         return True
 
-    # def open(self):
-    #    self.__clientID = self.get_cookie("picochess_remote")
     def open(self, client_id):
         self.__clientID = client_id
         if self.__clientID:
@@ -258,41 +255,39 @@ class ClientWSConnection(websocket.WebSocketHandler):
             app_log.info("cookie cant be read")
 
     def on_message(self, message):
+
+        def make_frame(pmess):
+            opcode = 0x1  # we know that binary is false, so opcode is s1
+            pmess = tornado.escape.utf8(pmess)
+            assert isinstance(pmess, bytes_type)
+            finbit = 0x80
+            mask_bit = 0
+            frame = struct.pack("B", finbit | opcode)
+            l = len(pmess)
+            if l < 126:
+                frame += struct.pack("B", l | mask_bit)
+            elif l <= 0xFFFF:
+                frame += struct.pack("!BH", 126 | mask_bit, l)
+            else:
+                frame += struct.pack("!BQ", 127 | mask_bit, l)
+            frame += pmess
+            return frame
+
         msg = json.loads(message)
         mlen = len(msg['payload']) if hasattr(msg, 'payload') else 0
         msg['username'] = self.__rh.client_info[self.__clientID]['nick']
         pmessage = json.dumps(msg)
         rconns = self.__rh.roomate_cwsconns(self.__clientID)
         app_log.info("| MSG_RECEIVED | cid: %s | len: %d" % (self.__clientID, mlen))
-        frame = self.make_frame(pmessage)
+        frame = make_frame(pmessage)
         for conn in rconns:
-            # conn.write_message(pmessage)
             conn.write_frame(frame)
-
-    def make_frame(self, message):
-        opcode = 0x1  # we know that binary is false, so opcode is s1
-        message = tornado.escape.utf8(message)
-        assert isinstance(message, bytes_type)
-        finbit = 0x80
-        mask_bit = 0
-        frame = struct.pack("B", finbit | opcode)
-        l = len(message)
-        if l < 126:
-            frame += struct.pack("B", l | mask_bit)
-        elif l <= 0xFFFF:
-            frame += struct.pack("!BH", 126 | mask_bit, l)
-        else:
-            frame += struct.pack("!BQ", 127 | mask_bit, l)
-        frame += message
-        return frame
 
     def write_frame(self, frame):
         try:
-            # self._write_frame(True, opcode, message)
             self.stream.write(frame)
         except StreamClosedError:
             pass
-            # self._abort()
 
     def on_close(self):
         cid = self.__clientID

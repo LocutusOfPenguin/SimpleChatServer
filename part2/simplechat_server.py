@@ -28,8 +28,8 @@ class RoomHandler(object):
     """Store data about connections, rooms, which users are in which rooms, etc."""
 
     def __init__(self):
-        self.client_info = {}  # for each client id we'll store  {'wsconn': wsconn, 'room':room, 'nick':nick}
-        self.room_info = {}  # dict to store a list of  {'cid':cid, 'nick':nick , 'wsconn': wsconn} for each room
+        self.client_info = {}  # for each client_id we'll store {'wsconn': wsconn, 'room': room, 'nick': nick}
+        self.room_info = {}  # dict to store a list of  {'cid': cid, 'nick': nick , 'wsconn': wsconn} for each room
         self.pending_cwsconn = {}  # pending client ws connection
         self.roomates = {}  # store a set for each room, each contains the connections of the clients in the room.
 
@@ -50,7 +50,7 @@ class RoomHandler(object):
                     if nickvalid is None:
                         cid = -4
                     else:
-                        cid = uuid.uuid4().hex  # generate a client id.
+                        cid = uuid.uuid4().hex  # generate a client_id.
                         if room not in self.room_info:  # it's a new room
                             self.room_info[room] = []
                         c = 1
@@ -174,6 +174,9 @@ class MainHandler(tornado.web.RequestHandler):
         """Store a reference to the "external" RoomHandler instance"""
         self.__rh = room_handler
 
+    def data_received(self, chunk):
+        pass
+
     def get(self, action=None):
         """Render chat.html if required arguments are present, render main.html otherwise."""
         callback = self.get_argument('callback')
@@ -243,6 +246,9 @@ class ClientWSConnection(websocket.WebSocketHandler):
         """Store a reference to the "external" RoomHandler instance"""
         self.__rh = room_handler
 
+    def data_received(self, chunk):
+        pass
+
     def check_origin(self, origin):
         return True
 
@@ -260,16 +266,16 @@ class ClientWSConnection(websocket.WebSocketHandler):
             assert isinstance(pmess, bytes_type)
             finbit = 0x80
             mask_bit = 0
-            frame = struct.pack("B", finbit | opcode)
+            pframe = struct.pack("B", finbit | opcode)
             l = len(pmess)
             if l < 126:
-                frame += struct.pack("B", l | mask_bit)
+                pframe += struct.pack("B", l | mask_bit)
             elif l <= 0xFFFF:
-                frame += struct.pack("!BH", 126 | mask_bit, l)
+                pframe += struct.pack("!BH", 126 | mask_bit, l)
             else:
-                frame += struct.pack("!BQ", 127 | mask_bit, l)
-            frame += pmess
-            return frame
+                pframe += struct.pack("!BQ", 127 | mask_bit, l)
+            pframe += pmess
+            return pframe
 
         msg = json.loads(message)
         mlen = len(msg['payload']) if hasattr(msg, 'payload') else 0

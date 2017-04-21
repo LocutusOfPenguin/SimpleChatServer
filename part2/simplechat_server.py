@@ -251,8 +251,6 @@ class ClientWSConnection(websocket.WebSocketHandler):
         if self.__clientID:
             self.__rh.add_client_wsconn(self.__clientID, self)
             app_log.info("| WS_OPENED | cid: %s" % self.__clientID)
-        else:
-            app_log.info("cookie cant be read")
 
     def on_message(self, message):
 

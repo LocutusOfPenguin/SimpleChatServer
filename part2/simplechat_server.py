@@ -65,11 +65,11 @@ class RoomHandler(object):
                         self.add_pending(cid, room, nn)
         return cid
 
-    def add_pending(self,cid,room,nick):
+    def add_pending(self, cid, room, nick):
         app_log.info("| ADD_PENDING | cid: %s" % cid)
         self.pending_cwsconn[cid] = {'room': room, 'nick': nick}  # still don't know the WS connection for this client
 
-    def remove_pending(self,client_id):
+    def remove_pending(self, client_id):
         app_log.info("| REMOVE_PENDING | cid: %s" % client_id)
         if client_id in self.pending_cwsconn:
             del(self.pending_cwsconn[client_id])  # no longer pending
@@ -104,22 +104,22 @@ class RoomHandler(object):
     def remove_client(self, client_id):
         """Remove all client information from the room handler."""
         cid_room = self.client_info[client_id]['room']
-        nick = self.client_info[client_id]['nick']
+        cid_nick = self.client_info[client_id]['nick']
         # first, remove the client connection from the corresponding room in self.roomates
-        client_conn = self.client_info[client_id]['wsconn']
-        if client_conn in self.roomates[cid_room]:
-            self.roomates[cid_room].remove(client_conn)
+        cid_conn = self.client_info[client_id]['wsconn']
+        if cid_conn in self.roomates[cid_room]:
+            self.roomates[cid_room].remove(cid_conn)
             if len(self.roomates[cid_room]) == 0:
                 del(self.roomates[cid_room])
         r_cwsconns = self.roomate_cwsconns(client_id)
         # filter out the list of connections r_cwsconns to remove clientID
-        r_cwsconns = [conn for conn in r_cwsconns if conn != self.client_info[client_id]['wsconn']]
+        r_cwsconns = [conn for conn in r_cwsconns if conn != cid_conn]
         self.client_info[client_id] = None
         for user in self.room_info[cid_room]:
             if user['cid'] == client_id:
                 self.room_info[cid_room].remove(user)
                 break
-        self.send_leave_msg(nick, r_cwsconns)
+        self.send_leave_msg(cid_room, cid_nick, r_cwsconns)
         nick_list = self.nicks_in_room(cid_room)
         self.send_nicks_msg(r_cwsconns, nick_list)
         if len(self.room_info[cid_room]) == 0:  # if room is empty, remove.
@@ -144,9 +144,10 @@ class RoomHandler(object):
 
     def send_join_msg(self, client_id):
         """Send a message of type 'join' to all users connected to the room where client_id is connected."""
+        room = self.client_info[client_id]['room']
         nick = self.client_info[client_id]['nick']
         r_cwsconns = self.roomate_cwsconns(client_id)
-        msg = {"event": "join", "username": nick, "payload": " joined room " + self.client_info[client_id]['room']}
+        msg = {"event": "join", "username": nick, "payload": " joined room " + room}
         pmessage = json.dumps(msg)
         for conn in r_cwsconns:
             conn.write_message(pmessage)
@@ -160,9 +161,9 @@ class RoomHandler(object):
             c.write_message(pmessage)
 
     @staticmethod
-    def send_leave_msg(nick, rconns):
+    def send_leave_msg(room, nick, rconns):
         """Send a message of type 'leave', specifying the nickname that is leaving, to all the specified connections."""
-        msg = {"event": "leave", "username": nick, "payload": " left room"}
+        msg = {"event": "leave", "username": nick, "payload": " left room " + room}
         pmessage = json.dumps(msg)
         for conn in rconns:
             conn.write_message(pmessage)

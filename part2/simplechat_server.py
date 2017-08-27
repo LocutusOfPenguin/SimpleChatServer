@@ -50,19 +50,13 @@ class RoomHandler(object):
                     if nickvalid is None:
                         cid = -4
                     else:
-                        cid = uuid.uuid4().hex  # generate a client_id.
-                        if room not in self.room_info:  # it's a new room
-                            self.room_info[room] = []
-                        c = 1
-                        nn = nick
-                        nir = self.nicks_in_room(room)
-                        while True:
-                            if nn in nir:
-                                nn = nick + str(c)
-                            else:
-                                break
-                            c += 1
-                        self.add_pending(cid, room, nn)
+                        if nick in self.nicks_in_room(room):
+                            cid = -5
+                        else:
+                            cid = uuid.uuid4().hex  # generate a client_id
+                            if room not in self.room_info:  # it's a new room
+                                self.room_info[room] = []
+                            self.add_pending(cid, room, nick)
         return cid
 
     def add_pending(self, cid, room, nick):
@@ -99,7 +93,8 @@ class RoomHandler(object):
         self.send_join_msg(client_id)
         nick_list = self.nicks_in_room(room)
         cwsconns = self.roomate_cwsconns(client_id)
-        self.send_nicks_msg(cwsconns, nick_list)
+        cid_nick = self.client_info[client_id]['nick']
+        self.send_nicks_msg(cwsconns, nick_list, cid_nick)
 
     def remove_client(self, client_id):
         """Remove all client information from the room handler."""
@@ -121,7 +116,7 @@ class RoomHandler(object):
                 break
         self.send_leave_msg(cid_room, cid_nick, r_cwsconns)
         nick_list = self.nicks_in_room(cid_room)
-        self.send_nicks_msg(r_cwsconns, nick_list)
+        self.send_nicks_msg(r_cwsconns, nick_list, cid_nick)
         if len(self.room_info[cid_room]) == 0:  # if room is empty, remove.
             del(self.room_info[cid_room])
             app_log.info("| ROOM_REMOVED | room: %s" % cid_room)
@@ -147,15 +142,15 @@ class RoomHandler(object):
         room = self.client_info[client_id]['room']
         nick = self.client_info[client_id]['nick']
         r_cwsconns = self.roomate_cwsconns(client_id)
-        msg = {"event": "join", "username": nick, "payload": " joined room " + room}
+        msg = {"event": "join", "username": nick, "payload": room}
         pmessage = json.dumps(msg)
         for conn in r_cwsconns:
             conn.write_message(pmessage)
 
     @staticmethod
-    def send_nicks_msg(conns, nick_list):
+    def send_nicks_msg(conns, nick_list, nick):
         """Send a message of type 'nick_list' (contains a list of nicknames) to all the specified connections."""
-        msg = {"event": "nick_list", "payload": nick_list}
+        msg = {"event": "nick_list", "username": nick, "payload": nick_list}
         pmessage = json.dumps(msg)
         for c in conns:
             c.write_message(pmessage)
@@ -163,7 +158,7 @@ class RoomHandler(object):
     @staticmethod
     def send_leave_msg(room, nick, rconns):
         """Send a message of type 'leave', specifying the nickname that is leaving, to all the specified connections."""
-        msg = {"event": "leave", "username": nick, "payload": " left room " + room}
+        msg = {"event": "leave", "username": nick, "payload": room}
         pmessage = json.dumps(msg)
         for conn in rconns:
             conn.write_message(pmessage)
@@ -186,7 +181,8 @@ class MainHandler(tornado.web.RequestHandler):
                 room = self.get_argument("room")
                 nick = self.get_argument("nick")
                 cid = self.__rh.add_roomnick(room, nick)  # this already calls add_pending
-                emsgs = ["The nickname provided was invalid. It can only contain letters, numbers, - and _.Please try again.",
+                emsgs = ["The nickname provided is already taken. Please try another name."
+                         "The nickname provided was invalid. It can only contain letters, numbers, - and _.Please try again.",
                          "The room name provided was invalid. It can only contain letters, numbers, - and _.Please try again.",
                          "The maximum number of users in this room (%d) has been reached. Please try again later."  % MAX_USERS_PER_ROOM,
                          "The maximum number of rooms (%d) has been reached. Please try again later." % MAX_ROOMS]
@@ -209,6 +205,14 @@ class MainHandler(tornado.web.RequestHandler):
                         self.set_header('Content-Type', 'application/javascript')
                         self.write(jsonp)
                         # self.render("templates/main.html", emsg=emsgs[cid])
+                    if cid == -5:
+                        obj = {
+                            'result': 'AlreadyTakenNick',
+                            'emsg': emsgs[cid]
+                        }
+                        jsonp = "{jsfunc}({json});".format(jsfunc=callback, json=json_encode(obj))
+                        self.set_header('Content-Type', 'application/javascript')
+                        self.write(jsonp)
                     else:
                         obj = {
                             'result': 'OK',

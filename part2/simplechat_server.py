@@ -50,12 +50,12 @@ class RoomHandler(object):
                     if nickvalid is None:
                         cid = -4
                     else:
+                        if room not in self.room_info:  # it's a new room
+                            self.room_info[room] = []
                         if nick in self.nicks_in_room(room):
                             cid = -5
                         else:
                             cid = uuid.uuid4().hex  # generate a client_id
-                            if room not in self.room_info:  # it's a new room
-                                self.room_info[room] = []
                             self.add_pending(cid, room, nick)
         return cid
 
@@ -181,7 +181,7 @@ class MainHandler(tornado.web.RequestHandler):
                 room = self.get_argument("room")
                 nick = self.get_argument("nick")
                 cid = self.__rh.add_roomnick(room, nick)  # this already calls add_pending
-                emsgs = ["The nickname provided is already taken. Please try another name."
+                emsgs = ["The nickname provided is already taken. Please try another name.",
                          "The nickname provided was invalid. It can only contain letters, numbers, - and _.Please try again.",
                          "The room name provided was invalid. It can only contain letters, numbers, - and _.Please try again.",
                          "The maximum number of users in this room (%d) has been reached. Please try again later."  % MAX_USERS_PER_ROOM,
@@ -205,7 +205,7 @@ class MainHandler(tornado.web.RequestHandler):
                         self.set_header('Content-Type', 'application/javascript')
                         self.write(jsonp)
                         # self.render("templates/main.html", emsg=emsgs[cid])
-                    if cid == -5:
+                    elif cid == -5:
                         obj = {
                             'result': 'AlreadyTakenNick',
                             'emsg': emsgs[cid]
